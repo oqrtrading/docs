@@ -1,0 +1,30 @@
+---
+title: "Unified execution"
+description: "Understand how Valence executes orders across venues."
+---
+
+## Execution model
+
+Describe how Valence abstracts venue-specific APIs into one flow.
+
+## Order lifecycle
+
+1. Validate request.
+2. Route to venue.
+3. Receive acknowledgment.
+4. Track partial and full fills.
+5. Reconcile final state.
+
+## Routing logic
+
+### Priority rules
+
+Document how price, liquidity, and policy affect routing.
+
+### Failover behavior
+
+Document fallback behavior when a venue is unavailable.
+
+## Reconciliation
+
+Document how fills, cancels, and rejects are normalized.
