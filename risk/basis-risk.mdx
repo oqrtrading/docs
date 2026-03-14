@@ -1,0 +1,76 @@
+---
+title: "Basis risk"
+description: "Understand and manage basis risk across related prediction market exposures."
+---
+
+## What basis risk means
+
+Basis risk is the risk that two related positions do not move together as expected.
+You may think you are hedged while residual risk remains.
+
+In prediction markets, basis risk is common because contracts can differ in:
+
+- Resolution source.
+- Wording and interpretation.
+- Expiry timing.
+- Liquidity profile.
+- Participant mix.
+
+## Common basis risk patterns in prediction markets
+
+### Cross-venue contract mismatch
+
+Two venues can list similar markets with different rulebooks.
+A small wording difference can create materially different payouts.
+
+### Timing mismatch
+
+One market may resolve earlier than another.
+News can move both markets, but one can lock while the other still trades.
+That can leave you exposed during the gap.
+
+### Granularity mismatch
+
+You may hedge a specific outcome with a broader index market.
+The hedge can fail when the specific outcome diverges from the broader basket.
+
+### Liquidity and microstructure mismatch
+
+One leg can trade deep while the hedge leg is thin.
+You can get filled on one side and miss on the other side.
+That creates execution basis risk.
+
+## How to manage basis risk
+
+Start by writing a clear hedge mapping before you trade.
+List the exact assumptions that make two legs related.
+Then monitor where those assumptions can break.
+
+Use these controls:
+
+- Define maximum unhedged notional per basis pair.
+- Set slippage limits for hedge leg execution.
+- Track spread behavior between linked markets.
+- Reduce size when correlation weakens.
+- Prefer contracts with matching resolution logic.
+
+## Operational checklist
+
+Before opening a basis trade:
+
+1. Verify both rulebooks and resolution criteria.
+2. Confirm timing alignment for settlement.
+3. Check live depth in both books.
+4. Define exit conditions for spread widening.
+
+During the trade:
+
+1. Monitor realized spread volatility.
+2. Watch headline risk windows.
+3. Recalculate worst-case residual exposure.
+
+After the trade:
+
+1. Review expected versus realized hedge performance.
+2. Record failure modes in your playbook.
+3. Update sizing limits for similar setups.

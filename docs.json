@@ -32,8 +32,10 @@
           {
             "group": "Trading operations",
             "pages": [
+              "trading/valence-trading-style",
               "trading/how-orders-work",
-              "risk/limits-and-controls"
+              "risk/limits-and-controls",
+              "risk/basis-risk"
             ]
           },
           {
