@@ -1,23 +1,140 @@
 ---
 title: "API overview"
-description: "Integrate with Valence programmatically."
+description: "Programmatic access to the Valence trading platform."
 ---
+
+Valence exposes two HTTP/WebSocket services that power the trading terminal and can be used for programmatic integration.
+
+## Services
+
+| Service | Default port | Purpose |
+|---|---|---|
+| **Trade Server** | `8080` | Core trading API — orders, books, positions, streaming |
+| **RFQ Server** | `8081` | Request-for-quote engine for block trades |
+
+## Base URLs
+
+<Tabs>
+  <Tab title="Production">
+    ```
+    Trade Server   https://{tenant}.valence.trade/api
+    RFQ Server     https://{tenant}.valence.trade:8081
+    ```
+  </Tab>
+  <Tab title="Local development">
+    ```
+    Trade Server   http://localhost:8080/api
+    RFQ Server     http://localhost:8081
+    ```
+  </Tab>
+</Tabs>
+
+Replace `{tenant}` with your namespace (e.g. `neo`, `demo`).
 
 ## Authentication
 
-Document API key lifecycle, scopes, and rotation.
+The Trade Server WebSocket endpoint requires a token. All other REST endpoints are currently unauthenticated.
 
-## Core resources
+1. Call `POST /api/auth/token` to generate a short-lived token (1 hour TTL).
+2. Pass the token as a query parameter when connecting to the WebSocket: `GET /api/ws?token={token}`.
 
-- Orders
-- Positions
-- Balances
-- Market data
+See [Authentication](/api/authentication) for details.
 
-## Environments
+## Quick reference — Trade Server
 
-Document sandbox and production base URLs.
+### System
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/ping` | Health check with timestamp |
+| `GET` | `/api/version` | Deployment environment and version |
+| `POST` | `/api/auth/token` | Generate auth token |
+
+### Orders
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/orders` | List resting orders |
+| `POST` | `/api/orders` | Place an order |
+| `POST` | `/api/orders/consolidated` | Place a consolidated order across a quoter's tickers |
+| `POST` | `/api/order/cancel` | Cancel an order by ID |
+| `POST` | `/api/order/cancel/consolidated` | Cancel all orders for a quoter |
+
+### Market data
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/books` | List all tracked order books |
+| `GET` | `/api/book/{symbol}` | Snapshot of a single order book |
+| `GET` | `/api/fair-values` | Current fair value estimates |
+| `POST` | `/api/fair` | Publish a fair value input |
+| `GET` | `/api/market-executions` | Recent market executions |
+| `DELETE` | `/api/market-executions` | Clear execution history |
+
+### Positions and balance
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/inventory` | Current positions |
+| `GET` | `/api/balance` | Account balances across exchanges |
+| `GET` | `/api/metrics` | Live per-ticker P&L metrics |
+
+### Trades
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/trades` | Recent fills (up to 1000) |
+| `DELETE` | `/api/trades` | Clear trade history |
+
+### Quoter management
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/quoters` | List all quoters with status |
+| `POST` | `/api/quoters/action` | Create, update, or control a quoter |
+| `GET` | `/api/tickers` | List ticker subscriptions |
+| `POST` | `/api/tickers/action` | Add or remove ticker subscriptions |
+
+### Streaming
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/ws` | WebSocket — real-time books, orders, fairs, and system events |
+
+### Other
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/kalshi/communications-id` | Kalshi communications channel ID |
+
+## CORS
+
+The Trade Server allows `GET`, `POST`, and `DELETE` from any origin. Allowed headers: `Content-Type`, `Authorization`.
+
+## Symbol format
+
+Symbols use an exchange-prefixed format:
+
+```
+kalshi:TICKER-ID
+polymarket:TOKEN-ID
+```
+
+For example: `kalshi:KXNFLGAME-25NOV13NYJNE-NE`.
 
 ## Next steps
 
-Link to endpoint references and example workflows.
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api/authentication">
+    Token generation and WebSocket auth
+  </Card>
+  <Card title="Orders" icon="arrow-right-arrow-left" href="/api/orders">
+    Place, cancel, and list orders
+  </Card>
+  <Card title="Market data" icon="chart-line" href="/api/market-data">
+    Order books, fair values, and executions
+  </Card>
+  <Card title="WebSocket" icon="bolt" href="/api/websocket">
+    Real-time streaming data
+  </Card>
+</CardGroup>

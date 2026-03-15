@@ -1,0 +1,221 @@
+---
+title: "Orders"
+description: "Place, cancel, and list orders."
+---
+
+## List resting orders
+
+Returns all currently resting (open) orders.
+
+<CodeGroup>
+```bash cURL
+curl http://localhost:8080/api/orders
+```
+
+```typescript TypeScript
+const res = await fetch("/api/orders");
+const data = await res.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "m_orders": [
+    {
+      "m_order_id": "abc-123",
+      "m_symbol": "kalshi:KXNFLGAME-25NOV13-NE",
+      "m_action": "BID",
+      "m_side": "yes",
+      "m_price": 55.0,
+      "m_qty": 10.0,
+      "m_order_status": "RESTING",
+      "m_timestamp": 1710000000
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_order_id` | `string` | Unique order identifier |
+| `m_symbol` | `string` | Exchange-prefixed security ID |
+| `m_action` | `string` | `BID` or `ASK` |
+| `m_side` | `string` | Always `yes` in the normalized view |
+| `m_price` | `number` | Price in cents |
+| `m_qty` | `number` | Remaining quantity |
+| `m_order_status` | `string` | Order status (`RESTING`) |
+| `m_timestamp` | `integer` | Confirmation timestamp (Unix ms) |
+
+---
+
+## Place an order
+
+Submit a new order to the exchange.
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "m_symbol": "kalshi:KXNFLGAME-25NOV13-NE",
+    "m_action": "buy",
+    "m_side": "yes",
+    "m_price": 55,
+    "m_quantity": 10
+  }'
+```
+
+```typescript TypeScript
+const res = await fetch("/api/orders", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    m_symbol: "kalshi:KXNFLGAME-25NOV13-NE",
+    m_action: "buy",
+    m_side: "yes",
+    m_price: 55,
+    m_quantity: 10,
+  }),
+});
+```
+</CodeGroup>
+
+### Request body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `m_symbol` | `string` | Yes | Exchange-prefixed ticker (e.g. `kalshi:TICKER`) |
+| `m_action` | `string` | Yes | `buy` or `sell` |
+| `m_side` | `string` | Yes | `yes` or `no` |
+| `m_price` | `integer` | Yes | Price in cents (1–99) |
+| `m_quantity` | `integer` | Yes | Number of contracts |
+| `m_post_only` | `boolean` | No | If `true`, reject if the order would immediately fill |
+| `m_ioc` | `boolean` | No | If `true`, immediately-or-cancel — fill what's available, cancel the rest |
+
+<Info>
+  The `m_action` and `m_side` fields are translated into an internal order side:
+  - `buy` + `yes` → BID
+  - `sell` + `yes` → ASK
+  - `buy` + `no` → ASK
+  - `sell` + `no` → BID
+</Info>
+
+### Response
+
+```json
+{
+  "m_order_id": "abc-123"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_order_id` | `string` | The assigned client order ID |
+
+### Errors
+
+| Status | Reason |
+|---|---|
+| `400` | Invalid symbol format or invalid action/side combination |
+| `500` | Failed to enqueue the order internally |
+
+---
+
+## Place a consolidated order
+
+Place an order that targets all tickers belonging to a specific quoter.
+
+```bash
+curl -X POST http://localhost:8080/api/orders/consolidated \
+  -H "Content-Type: application/json" \
+  -d '{
+    "m_qkey": "my-quoter",
+    "m_action": "buy",
+    "m_side": "yes",
+    "m_price": 55,
+    "m_quantity": 100
+  }'
+```
+
+### Request body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `m_qkey` | `string` | Yes | Quoter key (name) |
+| `m_action` | `string` | Yes | `buy` or `sell` |
+| `m_side` | `string` | Yes | `yes` or `no` |
+| `m_price` | `integer` | Yes | Price in cents |
+| `m_quantity` | `integer` | Yes | Number of contracts |
+| `m_post_only` | `boolean` | No | Post-only flag |
+| `m_ioc` | `boolean` | No | Immediate-or-cancel flag |
+| `m_ask_split_ratio` | `number` | No | Ratio for splitting ask-side orders (0.0–1.0) |
+
+### Response
+
+Same as [Place an order](#place-an-order).
+
+---
+
+## Cancel an order
+
+Cancel a single resting order by ID.
+
+```bash
+curl -X POST http://localhost:8080/api/order/cancel \
+  -H "Content-Type: application/json" \
+  -d '{ "m_oid": "abc-123" }'
+```
+
+### Request body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `m_oid` | `string` | Yes | Order ID to cancel |
+
+### Errors
+
+| Status | Reason |
+|---|---|
+| `404` | Order not found |
+| `500` | Failed to send cancel internally |
+
+Returns `200 OK` on success with no body.
+
+---
+
+## Cancel consolidated orders
+
+Cancel all resting orders associated with a quoter's tickers.
+
+```bash
+curl -X POST http://localhost:8080/api/order/cancel/consolidated \
+  -H "Content-Type: application/json" \
+  -d '{ "m_qkey": "my-quoter" }'
+```
+
+### Request body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `m_qkey` | `string` | Yes | Quoter key (name) |
+
+### Response
+
+```json
+{
+  "m_canceled_count": 12
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_canceled_count` | `integer` | Number of orders submitted for cancellation |
+
+### Errors
+
+| Status | Reason |
+|---|---|
+| `404` | Quoter not found |
+| `500` | Failed to send cancel internally |

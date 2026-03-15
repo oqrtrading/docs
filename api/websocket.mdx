@@ -1,0 +1,159 @@
+---
+title: "WebSocket"
+description: "Real-time streaming of order books, orders, fair values, and system events."
+---
+
+## Connection
+
+```
+ws://localhost:8080/api/ws?token={token}
+```
+
+The WebSocket endpoint requires a valid auth token as a query parameter. See [Authentication](/api/authentication) to generate one.
+
+If the token is missing or invalid, the server responds with `401 Unauthorized` before the upgrade completes.
+
+## Protocol
+
+- **Format**: All messages are sent as binary frames encoded with [MessagePack](https://msgpack.org/) (not JSON).
+- **Direction**: Server → client only. The server does not process incoming text or binary messages from the client.
+- **Ping/Pong**: The server sends a WebSocket ping every 30 seconds. Clients should respond with pong (most WebSocket libraries handle this automatically).
+
+## Message types
+
+Every MessagePack message contains a `type` field that identifies the payload shape.
+
+### `orderbooks`
+
+Sent every **200ms** (only when the data has changed). Contains a full snapshot of all tracked order books.
+
+```json
+{
+  "type": "orderbooks",
+  "entries": [
+    {
+      "m_symbol": "kalshi:KXNFLGAME-25NOV13-NE",
+      "m_book": {
+        "m_bids": [{ "m_level": 55.0, "m_qty": 100.0 }],
+        "m_asks": [{ "m_level": 57.0, "m_qty": 80.0 }]
+      }
+    }
+  ]
+}
+```
+
+### `orders`
+
+Sent every **200ms** (only when the data has changed). Contains all resting orders sorted by timestamp (newest first).
+
+```json
+{
+  "type": "orders",
+  "orders": [
+    {
+      "m_order_id": "abc-123",
+      "m_symbol": "kalshi:KXNFLGAME-25NOV13-NE",
+      "m_action": "BID",
+      "m_side": "yes",
+      "m_price": 55.0,
+      "m_qty": 10.0,
+      "m_order_status": "RESTING",
+      "m_timestamp": 1710000000
+    }
+  ]
+}
+```
+
+### `fairs`
+
+Sent every **500ms** (only when the data has changed). Contains all current fair value estimates.
+
+```json
+{
+  "type": "fairs",
+  "fairs": [
+    {
+      "m_fair_id": "KXNFLGAME-25NOV13-NE",
+      "m_value": 0.55,
+      "m_shadow_bid": 0.53,
+      "m_shadow_ask": 0.57,
+      "m_last_updated": 1710000000000000000,
+      "m_mode": 1,
+      "m_user_data": 0
+    }
+  ]
+}
+```
+
+### `system`
+
+Sent when a system event occurs (quoter crash, quoter added, quoter modified).
+
+```json
+{
+  "type": "system",
+  "message": {
+    "kind": "QuoterCrash",
+    "text": "quoter btc-mm crashed: connection timeout"
+  }
+}
+```
+
+| `kind` value | Description |
+|---|---|
+| `QuoterCrash` | A quoter has crashed |
+| `QuoterAdded` | A new quoter was registered |
+| `QuoterModified` | An existing quoter was modified |
+
+## Initial state
+
+On connection, the server immediately sends the latest cached snapshot for each channel (orderbooks, orders, fairs) so the client doesn't need to wait for the next tick.
+
+## Reconnection
+
+If the connection drops:
+1. Generate a new token (or reuse the existing one if it hasn't expired).
+2. Reconnect to `ws://host/api/ws?token={token}`.
+3. The server will send the latest cached state immediately on reconnection.
+
+<Info>
+  The broadcast channels have a capacity of 64 messages. If a client falls behind, messages are dropped (lagged). The next successful receive will contain the latest state, so no data is permanently lost — only intermediate updates are skipped.
+</Info>
+
+## Decoding MessagePack
+
+<CodeGroup>
+```typescript TypeScript (browser)
+import { decode } from "@msgpack/msgpack";
+
+ws.onmessage = (event) => {
+  const data = decode(new Uint8Array(event.data));
+  switch (data.type) {
+    case "orderbooks":
+      handleBooks(data.entries);
+      break;
+    case "orders":
+      handleOrders(data.orders);
+      break;
+    case "fairs":
+      handleFairs(data.fairs);
+      break;
+    case "system":
+      handleSystem(data.message);
+      break;
+  }
+};
+```
+
+```python Python
+import msgpack
+import websocket
+
+ws = websocket.WebSocket()
+ws.connect("ws://localhost:8080/api/ws?token=YOUR_TOKEN")
+
+while True:
+    data = msgpack.unpackb(ws.recv(), raw=False)
+    print(data["type"], data)
+```
+</CodeGroup>

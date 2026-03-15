@@ -1,0 +1,179 @@
+---
+title: "RFQ Server"
+description: "Request-for-quote engine for block trades on Kalshi."
+---
+
+The RFQ Server is a standalone service (default port `8081`) that automates quoting on Kalshi's request-for-quote channel. It monitors incoming RFQs, evaluates them against market conditions, and places quotes automatically.
+
+## Base URL
+
+```
+http://localhost:8081
+```
+
+## Endpoints
+
+### Get status
+
+Returns whether the RFQ engine is enabled and how many quotes are currently active.
+
+```bash
+curl http://localhost:8081/status
+```
+
+#### Response
+
+```json
+{
+  "m_enabled": true,
+  "m_active_quotes": 3
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_enabled` | `boolean` | Whether the engine is accepting and quoting on new RFQs |
+| `m_active_quotes` | `integer` | Number of currently active (open) quotes |
+
+---
+
+### Toggle engine
+
+Toggles the RFQ engine on or off. Returns the new state.
+
+```bash
+curl -X POST http://localhost:8081/toggle
+```
+
+#### Response
+
+```json
+{
+  "m_enabled": false
+}
+```
+
+---
+
+### Kill all quotes
+
+Cancels all active quotes and returns the engine state.
+
+```bash
+curl -X POST http://localhost:8081/kill-all
+```
+
+#### Response
+
+```json
+{
+  "m_enabled": true
+}
+```
+
+---
+
+### List active quotes
+
+Returns all currently active quotes with their metadata.
+
+```bash
+curl http://localhost:8081/quotes
+```
+
+#### Response
+
+```json
+{
+  "quotes": [
+    {
+      "quote_id": "q-abc-123",
+      "rfq_id": "rfq-789",
+      "market_ticker": "KXNFLGAME-25NOV13-NE"
+    }
+  ]
+}
+```
+
+---
+
+### Delete a quote
+
+Cancels a single active quote by its ID.
+
+```bash
+curl -X DELETE http://localhost:8081/quotes/q-abc-123
+```
+
+#### Response (success)
+
+```json
+{
+  "deleted": "q-abc-123"
+}
+```
+
+#### Response (error)
+
+```json
+{
+  "error": "quote not found"
+}
+```
+
+| Status | Reason |
+|---|---|
+| `200` | Quote successfully cancelled |
+| `500` | Failed to cancel the quote |
+
+---
+
+## WebSocket — RFQ log stream
+
+Connect to the RFQ log stream to monitor quoting decisions in real time.
+
+```
+ws://localhost:8081/ws
+```
+
+No authentication is required. Messages are sent as JSON text frames.
+
+### Message format
+
+Each message is an `RfqLogEntry` describing a step in the quoting process:
+
+```json
+{
+  "m_timestamp": "2025-03-13T10:30:00Z",
+  "m_rfq_id": "rfq-789",
+  "m_quote_id": "q-abc-123",
+  "m_market_ticker": "KXNFLGAME-25NOV13-NE",
+  "m_step": "quote_placed",
+  "m_yes_bid": 55,
+  "m_no_bid": 43,
+  "m_decision": "quote",
+  "m_market_best_bid": 54,
+  "m_market_best_ask": 57,
+  "m_spread": 3,
+  "m_details": "spread ok, quoting",
+  "m_leg_markets_json": "..."
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_timestamp` | `string` | ISO 8601 timestamp |
+| `m_rfq_id` | `string` | RFQ identifier |
+| `m_quote_id` | `string` | Quote identifier (if a quote was placed) |
+| `m_market_ticker` | `string` | Market ticker for the RFQ |
+| `m_step` | `string` | Processing step name |
+| `m_yes_bid` / `m_no_bid` | `integer` | Quoted bid prices |
+| `m_decision` | `string` | Decision taken at this step |
+| `m_market_best_bid` / `m_market_best_ask` | `integer` | Current market best bid/ask |
+| `m_spread` | `integer` | Current market spread |
+| `m_details` | `string` | Human-readable decision explanation |
+| `m_leg_markets_json` | `string` | JSON blob of leg market data |
+
+## CORS
+
+The RFQ Server uses a fully permissive CORS policy — all origins, methods, and headers are allowed.

@@ -1,0 +1,130 @@
+---
+title: "Positions and balance"
+description: "View inventory positions and account balances."
+---
+
+## Get inventory
+
+Returns current positions across all tracked tickers. Optionally filter by a single security.
+
+```bash
+curl http://localhost:8080/api/inventory
+```
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `m_security_id` | `string` | No | Filter to a specific security ID |
+
+### Response
+
+```json
+{
+  "m_inventory": [
+    {
+      "m_symbol": "kalshi:KXNFLGAME-25NOV13-NE",
+      "m_position": 50,
+      "m_average_price": 52.3,
+      "m_timestamp": 1710000000
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_symbol` | `string` | Exchange-prefixed security ID |
+| `m_position` | `integer` | Net position (positive = long, negative = short) |
+| `m_average_price` | `number` | Volume-weighted average entry price |
+| `m_timestamp` | `integer` | Snapshot timestamp (Unix seconds) |
+
+---
+
+## Get balance
+
+Returns account balances for each connected exchange.
+
+```bash
+curl http://localhost:8080/api/balance
+```
+
+### Response
+
+```json
+{
+  "m_balances": [
+    {
+      "m_exchange": "KALSHI",
+      "m_balance": 150000
+    },
+    {
+      "m_exchange": "POLYMARKET",
+      "m_balance": 500000
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_exchange` | `string` | Exchange name (`KALSHI` or `POLYMARKET`) |
+| `m_balance` | `integer` | Balance in the exchange's smallest unit (cents) |
+
+<Note>
+  The Polymarket balance is the USDCe balance scaled to 2 decimal places. The Kalshi balance is returned directly from the Kalshi API.
+</Note>
+
+### Errors
+
+| Status | Reason |
+|---|---|
+| `500` | Failed to fetch balance from any exchange |
+
+---
+
+## Get metrics
+
+Returns live per-ticker P&L and trading metrics. Optionally filter by a single security.
+
+```bash
+curl http://localhost:8080/api/metrics
+```
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `m_security_id` | `string` | No | Filter to a specific security ID |
+
+### Response
+
+```json
+{
+  "m_metrics": [
+    {
+      "m_symbol": "kalshi:KXNFLGAME-25NOV13-NE",
+      "m_position": 50.0,
+      "m_cash": -2615.0,
+      "m_mark_price": 55.0,
+      "m_last_fill_ts": 1710000000.0,
+      "m_volume": 200.0,
+      "m_total_fees": 12.5,
+      "m_taker_fees": 8.0
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_symbol` | `string` | Exchange-prefixed security ID |
+| `m_position` | `number` | Net position |
+| `m_cash` | `number` | Cumulative cash flow (negative = spent) |
+| `m_mark_price` | `number` | Last fill price (mark) |
+| `m_last_fill_ts` | `number` | Timestamp of last fill (Unix seconds, float) |
+| `m_volume` | `number` | Total traded volume (contracts) |
+| `m_total_fees` | `number` | Total fees paid |
+| `m_taker_fees` | `number` | Taker-only fees paid |
+
+Results are sorted alphabetically by symbol.

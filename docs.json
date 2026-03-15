@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "Valence Documentation",
   "colors": {
-    "primary": "#6D4AFF",
-    "light": "#8A6BFF",
-    "dark": "#4C35B5"
+    "primary": "#000000",
+    "light": "#ffffff",
+    "dark": "#000000"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -52,7 +52,26 @@
           {
             "group": "Overview",
             "pages": [
-              "api/overview"
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Trade Server",
+            "pages": [
+              "api/orders",
+              "api/market-data",
+              "api/positions",
+              "api/trades",
+              "api/quoters",
+              "api/websocket",
+              "api/system"
+            ]
+          },
+          {
+            "group": "RFQ Server",
+            "pages": [
+              "api/rfq-server"
             ]
           }
         ]
@@ -104,9 +123,8 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/oqrtrading",
+      "website": "https://valence.trade"
     }
   }
 }

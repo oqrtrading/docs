@@ -1,0 +1,152 @@
+---
+title: "Quoters and tickers"
+description: "Manage automated quoters and ticker subscriptions."
+---
+
+## Overview
+
+A **quoter** is an automated market-making strategy that continuously quotes on one or more tickers. Quoters are configured with a fair value source, placement strategy, spread logic, and trigger conditions.
+
+A **ticker subscription** tracks an order book and position for a given security. Tickers can be subscribed to manually or automatically when a quoter is created.
+
+---
+
+## List quoters
+
+Returns all registered quoters with their configuration and current status.
+
+```bash
+curl http://localhost:8080/api/quoters
+```
+
+### Response
+
+```json
+[
+  {
+    "qkey": "btc-mm",
+    "config": {
+      "m_name": "btc-mm",
+      "m_tickers": [...],
+      "m_fair": { ... },
+      "m_placer": { ... },
+      "m_canceler": { ... },
+      "m_trigger": { ... },
+      "m_spreader": { ... }
+    },
+    "status": "Live",
+    "book_empty": false
+  }
+]
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `qkey` | `string` | Unique quoter key (name) |
+| `config` | `object` | Full quoter configuration (see below) |
+| `status` | `string` | `Live`, `Paused`, or `Crashed` |
+| `book_empty` | `boolean` | `true` if all of the quoter's books have no levels |
+
+### Quoter config shape
+
+| Field | Type | Description |
+|---|---|---|
+| `m_name` | `string` | Quoter name/key |
+| `m_tickers` | `array` | List of ticker configurations with orientation |
+| `m_fair` | `object` | Fair value source (`Null`, `Alphabus`, `Combined`, `ReferenceSwmid`, `Swmid`) |
+| `m_placer` | `object` | Placement strategy (`BasicPassive`, `Active`, `AdaptivePassive`, etc.) |
+| `m_canceler` | `object` | Cancel logic |
+| `m_trigger` | `object` | When to re-quote (`Always`, `Timer`, `Updated`, `Never`) |
+| `m_spreader` | `object` | Spread function (`Constant`, `Fade`, `ExponentialFade`, `Shadow`) |
+
+---
+
+## Quoter actions
+
+Create, update, pause, resume, or remove quoters.
+
+```bash
+curl -X POST http://localhost:8080/api/quoters/action \
+  -H "Content-Type: application/json" \
+  -d '{ "Upsert": { ... quoter config ... } }'
+```
+
+The request body is a `SharedRunnerQuoterAction` enum, serialized as a tagged JSON object. The available variants are:
+
+| Variant | Payload | Description |
+|---|---|---|
+| `Upsert` | `QuoterConfig` | Create or update a quoter |
+| `Remove` | `string` | Remove a quoter by qkey |
+| `Pause` | `string` | Pause a quoter by qkey |
+| `Resume` | `string` | Resume a paused quoter by qkey |
+
+### Upsert behavior
+
+When upserting a quoter:
+1. The server checks for ticker conflicts — if any ticker in the new config is already owned by a different quoter, the request is rejected with `409 Conflict`.
+2. New tickers are automatically subscribed. The server bootstraps positions from ClickHouse (if available) or directly from the exchange.
+3. For Polymarket tickers, the security is registered in the Polymarket security registry.
+
+### Errors
+
+| Status | Reason |
+|---|---|
+| `409` | Ticker conflict with another quoter |
+| `500` | Failed to send the action internally |
+
+---
+
+## List ticker subscriptions
+
+Returns all currently subscribed tickers with reference counts.
+
+```bash
+curl http://localhost:8080/api/tickers
+```
+
+### Response
+
+```json
+[
+  {
+    "ticker": "kalshi:KXNFLGAME-25NOV13-NE",
+    "manual": 1,
+    "quoter": 2
+  }
+]
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `ticker` | `string` | Display string for the security ID |
+| `manual` | `integer` | Number of manual subscription references |
+| `quoter` | `integer` | Number of quoter subscription references |
+
+Results are sorted alphabetically by ticker.
+
+---
+
+## Ticker actions
+
+Add or remove ticker subscriptions.
+
+```bash
+curl -X POST http://localhost:8080/api/tickers/action \
+  -H "Content-Type: application/json" \
+  -d '{ "Add": ["kalshi:KXNFLGAME-25NOV13-NE"] }'
+```
+
+The request body is a `SharedRunnerTickerAction` enum:
+
+| Variant | Payload | Description |
+|---|---|---|
+| `Add` | `string[]` | Subscribe to one or more tickers |
+| `Remove` | `string[]` | Unsubscribe from one or more tickers |
+
+When adding tickers, the server bootstraps positions and resting orders from ClickHouse and the exchange.
+
+### Errors
+
+| Status | Reason |
+|---|---|
+| `500` | Failed to send the action or bootstrap failed |

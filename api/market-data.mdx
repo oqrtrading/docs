@@ -1,0 +1,174 @@
+---
+title: "Market data"
+description: "Order books, fair values, and market executions."
+---
+
+## List tracked books
+
+Returns the security IDs of all order books currently being tracked.
+
+```bash
+curl http://localhost:8080/api/books
+```
+
+### Response
+
+```json
+{
+  "m_books": [
+    "kalshi:KXNFLGAME-25NOV13-NE",
+    "kalshi:KXINX-26MAR14-B7925"
+  ]
+}
+```
+
+---
+
+## Get a book snapshot
+
+Returns the current bid and ask levels for a single security.
+
+```bash
+curl http://localhost:8080/api/book/kalshi:KXNFLGAME-25NOV13-NE
+```
+
+### Path parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `symbol` | `string` | Exchange-prefixed security ID |
+
+### Response
+
+```json
+{
+  "m_bids": [
+    { "m_level": 55.0, "m_qty": 100.0 },
+    { "m_level": 54.0, "m_qty": 250.0 }
+  ],
+  "m_asks": [
+    { "m_level": 57.0, "m_qty": 80.0 },
+    { "m_level": 58.0, "m_qty": 150.0 }
+  ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_bids` | `array` | Bid levels sorted by price (best first) |
+| `m_asks` | `array` | Ask levels sorted by price (best first) |
+| `m_bids[].m_level` | `number` | Bid price |
+| `m_bids[].m_qty` | `number` | Quantity at this price level |
+
+### Errors
+
+| Status | Reason |
+|---|---|
+| `404` | Book not found for the given symbol |
+
+---
+
+## Get fair values
+
+Returns the current fair value estimates from the alpha bus.
+
+```bash
+curl http://localhost:8080/api/fair-values
+```
+
+### Response
+
+```json
+{
+  "m_fair_values": [
+    {
+      "m_fair_id": "KXNFLGAME-25NOV13-NE",
+      "m_value": 0.55,
+      "m_shadow_bid": 0.53,
+      "m_shadow_ask": 0.57,
+      "m_last_updated": 1710000000000000000,
+      "m_mode": 1,
+      "m_user_data": 0
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_fair_id` | `string` | Alpha/fair value identifier |
+| `m_value` | `number \| null` | Point estimate of fair value |
+| `m_shadow_bid` | `number \| null` | Shadow bid (model's implied bid) |
+| `m_shadow_ask` | `number \| null` | Shadow ask (model's implied ask) |
+| `m_last_updated` | `integer \| null` | Last update timestamp (nanoseconds since epoch) |
+| `m_mode` | `integer` | Alpha mode flag |
+| `m_user_data` | `integer` | Opaque user-defined metadata |
+
+---
+
+## Publish a fair value
+
+Manually publish a fair value input to the alpha bus. Parameters are passed as query parameters.
+
+```bash
+curl -X POST "http://localhost:8080/api/fair?m_fair_id=MY-ALPHA&m_fair_value=0.55&m_shadow_bid=0.53&m_shadow_ask=0.57"
+```
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `m_fair_id` | `string` | Yes | Alpha/fair value identifier |
+| `m_fair_value` | `number` | No | Fair value (defaults to `0.0`) |
+| `m_mode` | `integer` | No | Alpha mode (defaults to `ALPHA_MODE_ON`) |
+| `m_user_data` | `integer` | No | Opaque user metadata (defaults to `0`) |
+| `m_shadow_bid` | `number` | No | Shadow bid (defaults to `m_fair_value`) |
+| `m_shadow_ask` | `number` | No | Shadow ask (defaults to `m_fair_value`) |
+
+Returns `200 OK` with an empty JSON body.
+
+---
+
+## Get market executions
+
+Returns recent market-level executions (trades observed on the exchange, not just your fills).
+
+```bash
+curl http://localhost:8080/api/market-executions
+```
+
+### Response
+
+```json
+{
+  "m_executions": [
+    {
+      "m_price": 55,
+      "m_quantity": 10.0,
+      "m_symbol": "kalshi:KXNFLGAME-25NOV13-NE",
+      "m_taker_side": "BID",
+      "m_timestamp": 1710000000
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_price` | `integer` | Execution price in cents |
+| `m_quantity` | `number` | Quantity executed |
+| `m_symbol` | `string` | Security ID |
+| `m_taker_side` | `string` | Side of the taker (`BID` or `ASK`) |
+| `m_timestamp` | `integer` | Execution timestamp (Unix seconds) |
+
+---
+
+## Clear market executions
+
+Clears the in-memory execution history.
+
+```bash
+curl -X DELETE http://localhost:8080/api/market-executions
+```
+
+Returns `200 OK` with no body.

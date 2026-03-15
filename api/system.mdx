@@ -1,0 +1,76 @@
+---
+title: "System"
+description: "Health checks, version info, and Kalshi communications."
+---
+
+## Ping
+
+Returns a timestamp to verify the server is alive.
+
+```bash
+curl http://localhost:8080/api/ping
+```
+
+### Response
+
+```json
+{
+  "m_timestamp": 1710000000
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_timestamp` | `integer` | Current server time (Unix seconds) |
+
+---
+
+## Version
+
+Returns the deployment environment and version tag.
+
+```bash
+curl http://localhost:8080/api/version
+```
+
+### Response
+
+```json
+{
+  "m_env": "prod",
+  "m_version": "abc123f"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_env` | `string` | Value of `DEPLOYMENT_ENV` (defaults to `unknown`) |
+| `m_version` | `string` | Value of `DEPLOYMENT_VERSION` (defaults to `unknown`) |
+
+---
+
+## Kalshi communications ID
+
+Returns the Kalshi communications channel ID, used for connecting to the Kalshi RFQ WebSocket.
+
+```bash
+curl http://localhost:8080/api/kalshi/communications-id
+```
+
+### Response
+
+```json
+{
+  "m_communications_id": "comm-abc-123"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_communications_id` | `string` | Kalshi communications channel identifier |
+
+### Errors
+
+| Status | Reason |
+|---|---|
+| `500` | Failed to fetch from Kalshi API |

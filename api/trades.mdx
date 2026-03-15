@@ -1,0 +1,60 @@
+---
+title: "Trades"
+description: "View and manage fill history."
+---
+
+## Get trades
+
+Returns recent fills (your order fills), up to 1000 most recent entries sorted by time.
+
+```bash
+curl http://localhost:8080/api/trades
+```
+
+### Response
+
+```json
+{
+  "m_trades": [
+    {
+      "m_trade_id": "ord-456",
+      "m_symbol": "kalshi:KXNFLGAME-25NOV13-NE",
+      "m_side": "BID",
+      "m_quantity": 10.0,
+      "m_price": 55,
+      "m_timestamp": 1710000000,
+      "m_fees": 0.7,
+      "m_order_id": "ord-456",
+      "m_is_maker": true
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_trade_id` | `string` | Trade identifier (same as the originating order ID) |
+| `m_symbol` | `string` | Exchange-prefixed security ID |
+| `m_side` | `string` | `BID` or `ASK` |
+| `m_quantity` | `number` | Filled quantity |
+| `m_price` | `integer` | Fill price in cents |
+| `m_timestamp` | `integer` | Fill timestamp (Unix seconds) |
+| `m_fees` | `number` | Fees paid on this fill |
+| `m_order_id` | `string` | Originating order ID |
+| `m_is_maker` | `boolean` | `true` if you were the maker (passive side) |
+
+---
+
+## Clear trades
+
+Clears the in-memory trade history. This is useful for resetting the fill log during a session without restarting the server.
+
+```bash
+curl -X DELETE http://localhost:8080/api/trades
+```
+
+Returns `200 OK` with no body.
+
+<Warning>
+  This only clears the in-memory history. Fills are still recorded on the exchange and in ClickHouse (if configured).
+</Warning>

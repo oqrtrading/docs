@@ -1,0 +1,52 @@
+---
+title: "Authentication"
+description: "Generate tokens and authenticate WebSocket connections."
+---
+
+## Overview
+
+REST endpoints on the Trade Server are unauthenticated. The WebSocket endpoint (`/api/ws`) requires a valid token passed as a query parameter.
+
+## Generate a token
+
+<ParamField body="None" />
+
+```bash
+curl -X POST http://localhost:8080/api/auth/token
+```
+
+### Response
+
+```json
+{
+  "m_token": "550e8400-e29b-41d4-a716-446655440000",
+  "m_expires_in": 3600
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `m_token` | `string` | UUID v4 token |
+| `m_expires_in` | `integer` | Seconds until expiration (default 3600) |
+
+Tokens are stored in-memory on the server. They expire after **1 hour** and are cleaned up on next validation attempt.
+
+## Authenticate a WebSocket connection
+
+Pass the token as a `token` query parameter when upgrading to WebSocket:
+
+```
+ws://localhost:8080/api/ws?token=550e8400-e29b-41d4-a716-446655440000
+```
+
+If the token is missing or expired, the server responds with `401 Unauthorized`.
+
+## Token lifecycle
+
+1. **Creation** — `POST /api/auth/token` generates a new token with a 1-hour TTL.
+2. **Validation** — On each WebSocket connection attempt, the token is checked against the in-memory store and its expiration timestamp.
+3. **Expiration** — Expired tokens are automatically removed from the store when a validation attempt occurs.
+
+<Warning>
+  Tokens are stored in server memory. A server restart invalidates all existing tokens.
+</Warning>

@@ -40,6 +40,150 @@ One leg can trade deep while the hedge leg is thin.
 You can get filled on one side and miss on the other side.
 That creates execution basis risk.
 
+## Quantifying basis risk
+
+This section walks through the math behind cross-venue basis exposure. The goal is to make worst-case PnL concrete before you put on a trade.
+
+### Notation
+
+| Symbol | Meaning |
+|---|---|
+| $p_K$ | Price you pay (or receive) per YES contract on Kalshi |
+| $p_P$ | Price you pay (or receive) per YES contract on Polymarket |
+| $N$ | Number of contracts (assumed equal on both legs) |
+
+Prediction market contracts are binary: they pay \$1 if the event occurs and \$0 otherwise. The complement (NO) pays \$1 minus the YES payout.
+
+### PnL for a single leg
+
+For a **long YES** position entered at price $p$:
+
+| Outcome | PnL |
+|---|---|
+| Resolves YES | $1 - p$ |
+| Resolves NO | $-p$ |
+
+For a **short YES** position entered at price $p$ (equivalently, long NO at $1 - p$):
+
+| Outcome | PnL |
+|---|---|
+| Resolves YES | $-(1 - p)$ |
+| Resolves NO | $p$ |
+
+### Cross-venue spread trade
+
+Suppose the same event is listed on both Kalshi and Polymarket. You observe $p_P > p_K$ and put on a spread:
+
+- **Buy YES on Kalshi** at $p_K$ (long leg)
+- **Sell YES on Polymarket** at $p_P$ (short leg)
+
+Net cash at entry per contract: you receive $p_P - p_K > 0$.
+
+If both venues resolve identically, the spread is risk-free:
+
+$$
+\text{PnL}_{\text{spread}} = p_P - p_K \quad \text{(regardless of outcome)}
+$$
+
+Proof for both cases:
+
+$$
+\text{Both YES:} \quad \underbrace{(1 - p_K)}_{\text{Kalshi}} + \underbrace{-(1 - p_P)}_{\text{Polymarket}} = p_P - p_K
+$$
+
+$$
+\text{Both NO:} \quad \underbrace{(-p_K)}_{\text{Kalshi}} + \underbrace{p_P}_{\text{Polymarket}} = p_P - p_K
+$$
+
+### When resolutions diverge
+
+Basis risk materializes when the two venues **do not resolve the same way**. This can happen due to different rulebooks, resolution sources, or timing. There are four possible outcomes:
+
+| Kalshi resolves | Polymarket resolves | Kalshi leg | Polymarket leg | Net PnL per contract |
+|---|---|---|---|---|
+| YES | YES | $1 - p_K$ | $-(1 - p_P)$ | $p_P - p_K$ |
+| NO | NO | $-p_K$ | $p_P$ | $p_P - p_K$ |
+| NO | YES | $-p_K$ | $-(1 - p_P)$ | $-(1 - p_P + p_K)$ |
+| YES | NO | $1 - p_K$ | $p_P$ | $1 - p_K + p_P$ |
+
+The two agreeing outcomes lock in your edge. The two diverging outcomes are where basis risk lives.
+
+### Worst-case loss
+
+The catastrophic scenario is **row 3**: your long leg (Kalshi) resolves NO while your short leg (Polymarket) resolves YES. You lose on both sides simultaneously.
+
+$$
+\text{PnL}_{\text{worst}} = -p_K - (1 - p_P) = -(1 - (p_P - p_K))
+$$
+
+Scaled to $N$ contracts:
+
+$$
+\boxed{\text{Max loss} = N \cdot \bigl(1 - (p_P - p_K)\bigr)}
+$$
+
+The worst-case loss is almost the full notional ($N$ dollars) minus the edge you collected at entry. For a typical arb spread where $p_P - p_K$ is a few cents, the worst case is close to $N$.
+
+### Numerical example
+
+You spot the following prices for "Team X wins the championship":
+
+| | Kalshi | Polymarket |
+|---|---|---|
+| YES price | \$0.52 | \$0.57 |
+
+You buy 1,000 YES on Kalshi and sell 1,000 YES on Polymarket, collecting $\$0.05 \times 1000 = \$50$ edge.
+
+**If both agree (YES or NO):** you keep the \$50.
+
+**Worst case (Kalshi NO, Polymarket YES):**
+
+$$
+\text{Max loss} = 1000 \times (1 - 0.05) = \$950
+$$
+
+You lose \$520 on the Kalshi leg and \$430 on the Polymarket leg, totaling \$950. The \$50 you collected at entry partially offsets, but the net is still \$950 in the hole.
+
+**Best case divergence (Kalshi YES, Polymarket NO):**
+
+$$
+\text{Best case} = 1000 \times (1 + 0.05) = \$1050
+$$
+
+This is the mirror scenario where you win on both legs.
+
+### Unequal sizing
+
+If you trade different notionals on each leg ($N_K$ on Kalshi and $N_P$ on Polymarket), the worst case becomes:
+
+$$
+\text{PnL}_{\text{worst}} = -N_K \cdot p_K - N_P \cdot (1 - p_P)
+$$
+
+And the general PnL across all four states is:
+
+$$
+\text{PnL} = N_K \cdot \text{PnL}_K(\text{outcome}_K) + N_P \cdot \text{PnL}_P(\text{outcome}_P)
+$$
+
+where each leg's PnL depends on its own venue's resolution. The legs are only correlated to the extent that the underlying events are truly the same — which is exactly the assumption that basis risk attacks.
+
+### Implied break-even divergence probability
+
+If you assume the spread is fair (zero expected value), you can back out the market-implied probability $q$ that the two venues diverge:
+
+$$
+\mathbb{E}[\text{PnL}] = (1 - q)(p_P - p_K) + q \cdot \mathbb{E}[\text{PnL} \mid \text{diverge}] = 0
+$$
+
+In the symmetric case where both divergence directions are equally likely:
+
+$$
+q = \frac{p_P - p_K}{1}
+$$
+
+A 5-cent spread implies roughly a 5% chance of resolution divergence. If you believe the true divergence probability is lower than what the spread implies, the trade has positive expected value.
+
 ## How to manage basis risk
 
 Start by writing a clear hedge mapping before you trade.
