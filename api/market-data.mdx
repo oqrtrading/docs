@@ -3,9 +3,13 @@ title: "Market data"
 description: "Order books, fair values, and market executions."
 ---
 
-## List tracked books
+## GET List tracked books
 
 Returns the security IDs of all order books currently being tracked.
+
+| Method | Path |
+|--------|------|
+| `GET` | `/api/books` |
 
 ```bash
 curl http://localhost:8080/api/books
@@ -24,9 +28,13 @@ curl http://localhost:8080/api/books
 
 ---
 
-## Get a book snapshot
+## GET Get a book snapshot
 
 Returns the current bid and ask levels for a single security.
+
+| Method | Path |
+|--------|------|
+| `GET` | `/api/book/{symbol}` |
 
 ```bash
 curl http://localhost:8080/api/book/kalshi:KXNFLGAME-25NOV13-NE
@@ -68,9 +76,13 @@ curl http://localhost:8080/api/book/kalshi:KXNFLGAME-25NOV13-NE
 
 ---
 
-## Get fair values
+## GET Get fair values
 
 Returns the current fair value estimates from the alpha bus.
+
+| Method | Path |
+|--------|------|
+| `GET` | `/api/fair-values` |
 
 ```bash
 curl http://localhost:8080/api/fair-values
@@ -106,9 +118,13 @@ curl http://localhost:8080/api/fair-values
 
 ---
 
-## Publish a fair value
+## POST Publish a fair value
 
 Manually publish a fair value input to the alpha bus. Parameters are passed as query parameters.
+
+| Method | Path |
+|--------|------|
+| `POST` | `/api/fair` |
 
 ```bash
 curl -X POST "http://localhost:8080/api/fair?m_fair_id=MY-ALPHA&m_fair_value=0.55&m_shadow_bid=0.53&m_shadow_ask=0.57"
@@ -129,9 +145,13 @@ Returns `200 OK` with an empty JSON body.
 
 ---
 
-## Get market executions
+## GET Get market executions
 
 Returns recent market-level executions (trades observed on the exchange, not just your fills).
+
+| Method | Path |
+|--------|------|
+| `GET` | `/api/market-executions` |
 
 ```bash
 curl http://localhost:8080/api/market-executions
@@ -163,9 +183,13 @@ curl http://localhost:8080/api/market-executions
 
 ---
 
-## Clear market executions
+## DELETE Clear market executions
 
 Clears the in-memory execution history.
+
+| Method | Path |
+|--------|------|
+| `DELETE` | `/api/market-executions` |
 
 ```bash
 curl -X DELETE http://localhost:8080/api/market-executions

@@ -3,9 +3,13 @@ title: "Orders"
 description: "Place, cancel, and list orders."
 ---
 
-## List resting orders
+## GET List resting orders
 
 Returns all currently resting (open) orders.
+
+| Method | Path |
+|--------|------|
+| `GET` | `/api/orders` |
 
 <CodeGroup>
 ```bash cURL
@@ -50,9 +54,13 @@ const data = await res.json();
 
 ---
 
-## Place an order
+## POST Place an order
 
 Submit a new order to the exchange.
+
+| Method | Path |
+|--------|------|
+| `POST` | `/api/orders` |
 
 <CodeGroup>
 ```bash cURL
@@ -123,9 +131,13 @@ const res = await fetch("/api/orders", {
 
 ---
 
-## Place a consolidated order
+## POST Place a consolidated order
 
-Place an order that targets all tickers belonging to a specific quoter.
+Place an order that targets all tickers belonging to a specific quoter. Uses the [smart order router](/trading/smart-order-router) to split quantity across the quoter's tickers.
+
+| Method | Path |
+|--------|------|
+| `POST` | `/api/orders/consolidated` |
 
 ```bash
 curl -X POST http://localhost:8080/api/orders/consolidated \
@@ -158,9 +170,13 @@ Same as [Place an order](#place-an-order).
 
 ---
 
-## Cancel an order
+## POST Cancel an order
 
 Cancel a single resting order by ID.
+
+| Method | Path |
+|--------|------|
+| `POST` | `/api/order/cancel` |
 
 ```bash
 curl -X POST http://localhost:8080/api/order/cancel \
@@ -185,9 +201,13 @@ Returns `200 OK` on success with no body.
 
 ---
 
-## Cancel consolidated orders
+## POST Cancel consolidated orders
 
 Cancel all resting orders associated with a quoter's tickers.
+
+| Method | Path |
+|--------|------|
+| `POST` | `/api/order/cancel/consolidated` |
 
 ```bash
 curl -X POST http://localhost:8080/api/order/cancel/consolidated \

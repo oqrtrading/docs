@@ -1,0 +1,160 @@
+---
+title: "Smart order router (manual consolidated orders)"
+description: "How consolidated orders are split across a quoter's tickers."
+---
+
+The smart order router (SOR) applies when you place a **consolidated order** — a single logical order (price, quantity, side) that is split across multiple tickers belonging to one quoter. It does **not** apply to single-symbol orders (`POST /api/orders` with `m_symbol`), which are sent directly to that symbol.
+
+## POST Place consolidated order (SOR entry point)
+
+The SOR is invoked when you call this endpoint.
+
+| Method | Path |
+|--------|------|
+| `POST` | `/api/orders/consolidated` |
+
+**Headers:** `Content-Type: application/json`, `Authorization: Bearer <token>` (if required by deployment)
+
+### Request body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `m_qkey` | `string` | Yes | Quoter key (name). The SOR runs in the context of this quoter's tickers. |
+| `m_action` | `string` | Yes | `buy` or `sell` |
+| `m_side` | `string` | Yes | `yes` or `no` (contract side) |
+| `m_price` | `integer` | Yes | Limit price in cents (1–99) |
+| `m_quantity` | `integer` | Yes | Total number of contracts to split across tickers |
+| `m_post_only` | `boolean` | No | If `true`, reject if the order would immediately fill |
+| `m_ioc` | `boolean` | No | If `true`, immediate-or-cancel |
+| `m_ask_split_ratio` | `number` | No | SOR allocation: `0.0`–`1.0`. Omitted → default `0.7`. `0` or `1` → single leg; in between → may use liquidity sweep. |
+
+### Response
+
+```json
+{
+  "m_order_id": "consolidated"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `m_order_id` | `string` | Typically `"consolidated"`; use for tracking. Individual child orders are submitted to the venue; list orders or use WebSocket to see them. |
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:8080/api/orders/consolidated \
+  -H "Content-Type: application/json" \
+  -d '{
+    "m_qkey": "my-quoter",
+    "m_action": "buy",
+    "m_side": "yes",
+    "m_price": 55,
+    "m_quantity": 100,
+    "m_ask_split_ratio": 0.7
+  }'
+```
+
+```typescript TypeScript
+const res = await fetch("http://localhost:8080/api/orders/consolidated", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    m_qkey: "my-quoter",
+    m_action: "buy",
+    m_side: "yes",
+    m_price: 55,
+    m_quantity: 100,
+    m_ask_split_ratio: 0.7,
+  }),
+});
+const data = await res.json(); // { m_order_id: "consolidated" }
+```
+</CodeGroup>
+
+### Errors
+
+| Status | Reason |
+|--------|--------|
+| `400` | Invalid action/side combination or invalid `m_ask_split_ratio` (must be 0.0–1.0 if present) |
+| `404` | Quoter not found for `m_qkey` |
+| `500` | Failed to enqueue or submit child orders |
+
+---
+
+## When SOR is used
+
+- **Endpoint**: `POST /api/orders/consolidated` with a `m_qkey` (quoter key).
+- **Scope**: The quoter must exist and have one or more tickers (e.g. two legs for a binary market: yes and no, or two related contracts). Each ticker has an orientation: **Normal** or **Flipped** (e.g. yes vs no; the flipped leg uses the opposite price/side in venue terms).
+
+The server looks up the quoter by `m_qkey`, builds one logical limit order from your request, then runs the SOR to produce one or more child orders — one per ticker — and submits them.
+
+## Ask split ratio
+
+Consolidated orders accept an optional **ask split ratio** (`m_ask_split_ratio`): a number between `0.0` and `1.0` that controls how quantity is allocated between the two sides of a two-ticker group (e.g. yes vs no).
+
+| Value | Behavior |
+|-------|----------|
+| Omitted | Default **0.7** is used (70% to the "ask" leg, 30% to the "bid" leg in orientation terms). |
+| `0.0` or `1.0` | Single-side: 100% to one leg. No liquidity sweep; allocation uses the ratio path only. |
+| `0.0 < x < 1.0` | SOR may use a **liquidity sweep** (see below) if the book has opposing liquidity; otherwise falls back to ratio-based split. |
+
+In the Terminal, you can enable **Settings → Consolidated SOR → Enable custom SOR overrides** and set a custom ask split ratio; that value is sent as `m_ask_split_ratio` when placing from the consolidated orderbook.
+
+## How the SOR allocates quantity
+
+### 1. Single ticker
+
+If the quoter has only one ticker, the logical order is sent as a single child order to that ticker. No split.
+
+### 2. Ratio-based split (two tickers)
+
+When the ratio is `0.0` or `1.0`, or when the liquidity sweep does not apply (see below), the SOR uses **ratio-based split** for exactly two tickers:
+
+- Total quantity is split according to `m_ask_split_ratio`: one leg gets `round(quantity * ask_split_ratio)`, the other gets the remainder.
+- Price and side are translated per ticker orientation (flipped ticker gets flipped price and oriented side).
+- If there are more than two tickers, the SOR falls back to **equal split** across all tickers (each gets roughly equal quantity, remainder distributed one per ticker).
+
+### 3. Liquidity sweep (two or more tickers, ratio in (0, 1))
+
+When the ratio is strictly between 0 and 1 and the order could interact with available liquidity:
+
+- The server computes a **combined best bid/offer** across all tickers in the group.
+- **Starting price**: When you are bidding, it uses the best ask; when you are asking, it uses the best bid.
+- **Sweep**: It walks price levels from that starting price toward your limit price (one cent at a time). At each level it looks at available size on the **opposite** side (asks when you bid, bids when you ask) per ticker and allocates quantity to each ticker until the full order quantity is filled or levels are exhausted.
+- **Remainder**: Any quantity not filled by the sweep is distributed **equally** across tickers (with remainder assigned one per ticker so the sum matches the requested quantity).
+- **Child orders**: One limit order per ticker at your limit price (and oriented price for flipped tickers) with the allocated quantity.
+
+**Fallback to ratio-based split** happens when:
+
+- There is no combined BBO (no books or empty), or
+- You are bidding and your limit price is **below** the best ask (no liquidity to sweep), or
+- You are asking and your limit price is **above** the best bid.
+
+In those cases the SOR uses the ratio-based (or equal) split instead.
+
+## Orientation (normal vs flipped)
+
+Quoter tickers can be **Normal** or **Flipped** (e.g. yes vs no). For the flipped ticker:
+
+- **Price**: Your limit price is converted to the other side (e.g. 55¢ yes → 45¢ no).
+- **Side**: Your side is oriented (e.g. bid on yes → ask on no).
+
+The SOR outputs venue-ready limit orders per ticker with the correct price and side for each.
+
+## Summary
+
+| Scenario | Behavior |
+|----------|----------|
+| Single-symbol order (`POST /api/orders`) | No SOR; order sent to that symbol only. |
+| Consolidated order, 1 ticker | One child order to that ticker. |
+| Consolidated order, 2 tickers, ratio 0 or 1 | Ratio-based split (100% to one leg). |
+| Consolidated order, 2 tickers, ratio in (0, 1), sweep applicable | Liquidity sweep then equal split of remainder. |
+| Consolidated order, 2 tickers, ratio in (0, 1), sweep not applicable | Ratio-based split (e.g. 70% / 30% at default). |
+| Consolidated order, 3+ tickers | Equal split (or sweep then equal remainder if ratio in (0, 1)). |
+
+## See also
+
+- [Orders API](/api/orders) — full reference for place/cancel (including [cancel consolidated](/api/orders#cancel-consolidated-orders)).
+- [Quoters](/api/quoters) — list quoters and their tickers; SOR runs in the context of a quoter's ticker set.

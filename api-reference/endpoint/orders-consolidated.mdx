@@ -1,0 +1,51 @@
+---
+title: "Place consolidated order"
+description: "Place an order by quoter qkey with optional ask split."
+---
+
+## POST /api/orders/consolidated
+
+Place an order using a unified qkey (quoter/ticker key). Use this when your workflow is driven by systematic quoters rather than raw symbols.
+
+### Request
+
+- **Method**: `POST`
+- **Path**: `/api/orders/consolidated`
+- **Headers**: `Content-Type: application/json`, `Authorization: Bearer <token>`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `m_qkey` | string | Yes | Quoter/ticker qkey identifying the market(s) |
+| `m_action` | string | Yes | `"buy"` or `"sell"` |
+| `m_side` | string | Yes | `"yes"` or `"no"` |
+| `m_price` | number | Yes | Limit price in cents |
+| `m_quantity` | number | Yes | Order size in contracts |
+| `m_post_only` | boolean | No | Post-only (maker only) |
+| `m_ioc` | boolean | No | Immediate-or-cancel |
+| `m_ask_split_ratio` | number | No | If present, must be between 0 and 1 (inclusive); used for ask allocation across legs |
+
+### Response
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `m_order_id` | string | Often `"consolidated"`; use for tracking in your system |
+
+### Example
+
+```bash
+curl -X POST "http://localhost:8080/api/orders/consolidated" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "m_qkey": "your-qkey",
+    "m_action": "buy",
+    "m_side": "yes",
+    "m_price": 55,
+    "m_quantity": 20
+  }'
+```
+
+### See also
+
+- [Place order](/api-reference/endpoint/orders) for symbol-based orders.
+- [Cancel consolidated](/api-reference/endpoint/order-cancel#consolidated).

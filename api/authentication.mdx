@@ -7,7 +7,11 @@ description: "Generate tokens and authenticate WebSocket connections."
 
 REST endpoints on the Trade Server are unauthenticated. The WebSocket endpoint (`/api/ws`) requires a valid token passed as a query parameter.
 
-## Generate a token
+## POST Generate a token
+
+| Method | Path |
+|--------|------|
+| `POST` | `/api/auth/token` |
 
 <ParamField body="None" />
 

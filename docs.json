@@ -3,11 +3,11 @@
   "theme": "mint",
   "name": "Valence Documentation",
   "colors": {
-    "primary": "#000000",
-    "light": "#ffffff",
-    "dark": "#000000"
+    "primary": "#2563eb",
+    "light": "#60a5fa",
+    "dark": "#1d4ed8"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/images/favicon.svg",
   "navigation": {
     "tabs": [
       {
@@ -34,6 +34,7 @@
             "pages": [
               "trading/valence-trading-style",
               "trading/how-orders-work",
+              "trading/smart-order-router",
               "risk/limits-and-controls",
               "risk/basis-risk"
             ]

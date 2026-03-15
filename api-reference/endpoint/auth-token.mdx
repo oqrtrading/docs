@@ -1,0 +1,39 @@
+---
+title: "Auth token"
+description: "Obtain a Bearer token for the Valence API."
+---
+
+## POST /api/auth/token
+
+Returns a short-lived Bearer token used to authenticate all other API requests. No request body or API key required.
+
+### Request
+
+- **Method**: `POST`
+- **Path**: `/api/auth/token`
+- **Headers**: `Content-Type: application/json` (optional; no body)
+- **Body**: None
+
+### Response
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `m_token` | string | Bearer token; send as `Authorization: Bearer <m_token>` |
+| `m_expires_in` | number | Token lifetime in seconds; refresh before expiry |
+
+### Example
+
+```bash
+curl -X POST "http://localhost:8080/api/auth/token"
+```
+
+```json
+{
+  "m_token": "550e8400-e29b-41d4-a716-446655440000",
+  "m_expires_in": 3600
+}
+```
+
+### Next steps
+
+Use the token in [Place order](/api-reference/endpoint/orders), [Cancel order](/api-reference/endpoint/order-cancel), and other endpoints. See [Authentication](/api/authentication).

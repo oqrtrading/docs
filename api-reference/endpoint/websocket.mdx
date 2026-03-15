@@ -1,0 +1,39 @@
+---
+title: "WebSocket"
+description: "Stream order books, fills, and live state."
+---
+
+## GET /api/ws
+
+Single WebSocket endpoint for real-time data. Use it to receive order book updates, fills, and other streaming state without polling.
+
+### Connection
+
+- **URL**: `ws://<host>:<port>/api/ws` (e.g. `ws://localhost:8080/api/ws`).
+- **Authentication**: Depends on deployment. You may need to pass the Bearer token (e.g. query parameter or in the first message). Check with your team or [Authentication](/api/authentication).
+
+### What you receive
+
+After connecting, the server pushes messages for:
+
+- **Order books** — depth and updates per symbol (e.g. `kalshi:TICKER`, `polymarket:CONDITION_ID`).
+- **Fills / trades** — executions for your orders.
+- **Other state** — inventory, orders, or metrics if the backend exposes them over the same socket.
+
+Exact message shapes (JSON schema) are defined by the tradegui backend. Use the WebSocket stream in parallel with REST for orders and cancel so you get live books and fills while trading.
+
+### Example (conceptual)
+
+```javascript
+const ws = new WebSocket('ws://localhost:8080/api/ws?token=YOUR_TOKEN')
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data)
+  // Handle book update, fill, etc.
+}
+```
+
+### See also
+
+- [API overview](/api/overview) — base URL and environments.
+- [Authentication](/api/authentication) — how to obtain and send the token.
+- [Code examples](/api/code-examples).

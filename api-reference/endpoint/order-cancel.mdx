@@ -1,0 +1,40 @@
+---
+title: "Cancel order"
+description: "Cancel an order by ID or consolidated flow."
+---
+
+## POST /api/order/cancel
+
+Cancel an open order by its order ID (returned from place order).
+
+### Request
+
+- **Method**: `POST`
+- **Path**: `/api/order/cancel`
+- **Headers**: `Content-Type: application/json`, `Authorization: Bearer <token>`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `m_oid` | string | Yes | Order ID from place order response (or client order ID you sent) |
+
+### Response
+
+Success: empty body or 204. Error: 4xx/5xx with message.
+
+### Example
+
+```bash
+curl -X POST "http://localhost:8080/api/order/cancel" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{ "m_oid": "order-uuid" }'
+```
+
+## POST /api/order/cancel/consolidated
+
+Cancel in the consolidated (qkey) flow. Request body includes the identifier used for the consolidated order (e.g. qkey or server-assigned id). See backend or integration docs for exact request schema if you use consolidated cancel.
+
+### See also
+
+- [Place order](/api-reference/endpoint/orders), [Place consolidated order](/api-reference/endpoint/orders-consolidated).
+- [Code examples](/api/code-examples).

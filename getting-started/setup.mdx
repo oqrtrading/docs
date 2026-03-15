@@ -1,0 +1,48 @@
+---
+title: "Setup"
+description: "End-to-end flow from access to first order."
+---
+
+## How the whole setup works
+
+Follow this flow to go from zero to placing orders via the Terminal or the API.
+
+### 1. Request access
+
+Complete the Valence intake form. You will receive instructions for account access and, if you operate the backend, exchange connectivity.
+
+### 2. Get credentials
+
+- **Valence**: You will use the Valence API with a Bearer token (see [Authentication](/api/authentication)). No API key is required for the Valence API itself; you obtain a token from `POST /api/auth/token`.
+- **Exchange API keys** (if you run the backend): Obtain keys from each venue you trade:
+  - **Kalshi**: API key ID + RSA private key (PEM). Generate in your Kalshi account; store in `~/.kalshi/` or set `KALSHI_API_KEY` and `KALSHI_SECRET_KEY_PATH` (or equivalent). Link: [Kalshi API key documentation](https://trading-api.readme.io/reference/getting-started) (use official Kalshi link when available).
+  - **Polymarket**: API key, secret, passphrase; set `POLYMARKET_API_KEY`, `POLYMARKET_API_SECRET`, and related env vars. Use Polymarket’s official docs to generate keys.
+
+### 3. Configure the backend (if you run it)
+
+Set environment variables for the tradegui backend. For Kalshi: `KALSHI_ENV` (e.g. prod vs test), `KALSHI_API_KEY`, and path or content for the private key. For Polymarket: the API key and secret env vars. Never commit these; use `.env` files or a secret store.
+
+### 4. Run or connect to the backend
+
+- **Local**: Run `make webserver` (or `make webserverd` for live order sending). Backend runs on port 8080 by default.
+- **Hosted**: Use the base URL provided to you (may be a proxy in front of the backend).
+
+### 5. Get a Valence API token
+
+Call `POST /api/auth/token` (no body). Use the returned token as `Authorization: Bearer <token>` on all subsequent API requests. See [Authentication](/api/authentication) and [Code examples](/api/code-examples).
+
+### 6. Place your first order
+
+- **Terminal**: Log in and use the order entry UI; the frontend uses the same API.
+- **API**: `POST /api/orders` with `m_symbol` (e.g. `kalshi:TICKER`), `m_side`, `m_action`, `m_price`, `m_quantity`. Confirm with `GET /api/orders` and `GET /api/trades`. See [Place order](/api-reference/endpoint/orders).
+
+### 7. Optional: streaming and systematic features
+
+- Subscribe to `GET /api/ws` for live order books and fills.
+- Use quoters and tickers endpoints if you use systematic quoting features.
+
+## Next steps
+
+- [Account access](/getting-started/account-access) — onboarding checklist and exchange API key links.
+- [API overview](/api/overview) — base URL, resources, and environments.
+- [Code examples](/api/code-examples) — minimal snippets for token, place order, cancel, WebSocket.

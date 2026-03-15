@@ -1,0 +1,90 @@
+---
+title: "Code examples"
+description: "Minimal snippets for token, place order, cancel, and WebSocket."
+---
+
+## Get a token
+
+```bash
+curl -X POST "http://localhost:8080/api/auth/token"
+```
+
+Response:
+
+```json
+{
+  "m_token": "uuid-string",
+  "m_expires_in": 3600
+}
+```
+
+Use the token as `Authorization: Bearer <m_token>` on all subsequent requests.
+
+## Place an order
+
+`POST /api/orders` — single venue, symbol format `kalshi:TICKER` or `polymarket:CONDITION_ID`.
+
+```bash
+curl -X POST "http://localhost:8080/api/orders" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "m_symbol": "kalshi:EXAMPLE",
+    "m_action": "buy",
+    "m_side": "yes",
+    "m_price": 50,
+    "m_quantity": 10,
+    "m_post_only": true
+  }'
+```
+
+Response:
+
+```json
+{
+  "m_order_id": "order-uuid"
+}
+```
+
+See [Orders endpoint](/api-reference/endpoint/orders) for full request/response schema.
+
+## Place consolidated order
+
+`POST /api/orders/consolidated` — unified qkey, optional ask split. Use when your system uses quoter/ticker qkeys.
+
+```bash
+curl -X POST "http://localhost:8080/api/orders/consolidated" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "m_qkey": "your-qkey",
+    "m_action": "buy",
+    "m_side": "yes",
+    "m_price": 50,
+    "m_quantity": 10
+  }'
+```
+
+See [Orders consolidated](/api-reference/endpoint/orders-consolidated).
+
+## Cancel an order
+
+`POST /api/order/cancel` — cancel by order ID.
+
+```bash
+curl -X POST "http://localhost:8080/api/order/cancel" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{ "m_oid": "order-uuid" }'
+```
+
+For consolidated flow use `POST /api/order/cancel/consolidated` with the appropriate body. See [Cancel order](/api-reference/endpoint/order-cancel).
+
+## WebSocket (books and fills)
+
+Connect to `GET /api/ws` (e.g. `ws://localhost:8080/api/ws`). Send Bearer token as required by your deployment (e.g. query param or first message). Subscribe to book and fill streams; see [WebSocket](/api-reference/endpoint/websocket) for message shapes.
+
+## Base URL and environments
+
+- **Local**: `http://localhost:8080` (tradegui).
+- **Behind proxy**: Your frontend may call `/api/backend/*`; the documented endpoints are the tradegui paths. Use the base URL your team provides for API clients.

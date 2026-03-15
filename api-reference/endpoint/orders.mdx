@@ -1,0 +1,60 @@
+---
+title: "Place order"
+description: "Place a single-venue order by symbol."
+---
+
+## POST /api/orders
+
+Place a limit order on Kalshi or Polymarket. Symbol format determines venue: `kalshi:TICKER` or `polymarket:CONDITION_ID`.
+
+### Request
+
+- **Method**: `POST`
+- **Path**: `/api/orders`
+- **Headers**: `Content-Type: application/json`, `Authorization: Bearer <token>`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `m_symbol` | string | Yes | Prefixed symbol, e.g. `kalshi:EXAMPLE`, `polymarket:0x...` |
+| `m_action` | string | Yes | `"buy"` or `"sell"` |
+| `m_side` | string | Yes | `"yes"` or `"no"` (contract side) |
+| `m_price` | number | Yes | Limit price in cents (e.g. 50 = 50¢) |
+| `m_quantity` | number | Yes | Order size in contracts |
+| `m_post_only` | boolean | No | If true, order is post-only (maker only) |
+| `m_ioc` | boolean | No | If true, order is immediate-or-cancel |
+
+Valid `m_action` / `m_side` combinations: buy+yes (bid), sell+yes (ask), buy+no (ask), sell+no (bid).
+
+### Response
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `m_order_id` | string | Client order ID for cancel or tracking |
+
+### Example
+
+```bash
+curl -X POST "http://localhost:8080/api/orders" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "m_symbol": "kalshi:EXAMPLE",
+    "m_action": "buy",
+    "m_side": "yes",
+    "m_price": 50,
+    "m_quantity": 10,
+    "m_post_only": true
+  }'
+```
+
+```json
+{
+  "m_order_id": "generated-client-order-id"
+}
+```
+
+### See also
+
+- [Place consolidated order](/api-reference/endpoint/orders-consolidated) for qkey-based flow.
+- [Cancel order](/api-reference/endpoint/order-cancel).
+- [Code examples](/api/code-examples).

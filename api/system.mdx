@@ -3,9 +3,13 @@ title: "System"
 description: "Health checks, version info, and Kalshi communications."
 ---
 
-## Ping
+## GET Ping
 
 Returns a timestamp to verify the server is alive.
+
+| Method | Path |
+|--------|------|
+| `GET` | `/api/ping` |
 
 ```bash
 curl http://localhost:8080/api/ping
@@ -25,9 +29,13 @@ curl http://localhost:8080/api/ping
 
 ---
 
-## Version
+## GET Version
 
 Returns the deployment environment and version tag.
+
+| Method | Path |
+|--------|------|
+| `GET` | `/api/version` |
 
 ```bash
 curl http://localhost:8080/api/version
@@ -49,9 +57,13 @@ curl http://localhost:8080/api/version
 
 ---
 
-## Kalshi communications ID
+## GET Kalshi communications ID
 
 Returns the Kalshi communications channel ID, used for connecting to the Kalshi RFQ WebSocket.
+
+| Method | Path |
+|--------|------|
+| `GET` | `/api/kalshi/communications-id` |
 
 ```bash
 curl http://localhost:8080/api/kalshi/communications-id
