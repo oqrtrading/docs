@@ -1,0 +1,12 @@
+---
+title: "7. Why it matters"
+description: "Risk, P&amp;L, collateral, and one mental model."
+---
+
+1. **Risk** — One number per group. A consolidated position of −100 means you’re net short 100 in the reference unit. No adding and subtracting legs in your head.
+2. **P&amp;L** — We mark and report P&amp;L in the same unit. Position × price move gives a clear impact.
+3. **Sizing** — When you place a consolidated order (“buy 50”), your consolidated position moves by that amount (modulo fills). Knowing your consolidated position tells you how much more you can add or how much to reduce.
+4. **Collateral and getting your money back (e.g. Kalshi)** — On venues like Kalshi, collateral is tied to your **net** exposure. If you’re long 30 yes and long 70 no on the same event, the venue effectively has you flat (yes + no = 100¢ payoff either way), so your collateral can be released or returned once that net position is recognized. Your **consolidated position** is that net exposure: it’s what drives how much capital is locked and when you get it back when you flatten or when the market settles. Watching consolidated position (instead of each leg separately) tells you when you’re truly flat and when you’re entitled to collateral return.
+5. **One model** — The consolidated book, your consolidated orders (via the [smart order router](/trading/smart-order-router)), and your consolidated position all use the same group and orientation. Book, orders, and risk are in one unit.
+
+Next: [8. Putting it together](/trading-tutorial/putting-it-together) — how to use this when you trade.

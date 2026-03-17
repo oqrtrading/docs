@@ -1,15 +1,19 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Valence Documentation",
+  "name": "Valence",
   "colors": {
     "primary": "#2563eb",
     "light": "#60a5fa",
     "dark": "#1d4ed8"
   },
-  "favicon": "/images/favicon.svg",
+  "favicon": "/favicon.svg",
   "navigation": {
-    "tabs": [
+    "versions": [
+      {
+        "version": "Latest",
+        "tag": "Latest",
+        "tabs": [
       {
         "tab": "Guides",
         "groups": [
@@ -18,7 +22,9 @@
             "pages": [
               "index",
               "getting-started/overview",
-              "getting-started/account-access"
+              "getting-started/architecture",
+              "getting-started/account-access",
+              "getting-started/python-user-guide"
             ]
           },
           {
@@ -30,10 +36,28 @@
             ]
           },
           {
+            "group": "Trading tutorial",
+            "pages": [
+              "trading-tutorial/introduction",
+              "trading-tutorial/order-book",
+              "trading-tutorial/position",
+              "trading-tutorial/fair-and-edge",
+              "trading-tutorial/two-legs",
+              "trading-tutorial/consolidated-orderbook",
+              "trading-tutorial/consolidated-position",
+              "trading-tutorial/why-it-matters",
+              "trading-tutorial/putting-it-together",
+              "trading-tutorial/next-steps"
+            ]
+          },
+          {
             "group": "Trading operations",
             "pages": [
+              "trading/how-to-trade",
               "trading/valence-trading-style",
+              "trading/fair-values",
               "trading/how-orders-work",
+              "trading/consolidated-orderbooks-and-sor",
               "trading/smart-order-router",
               "risk/limits-and-controls",
               "risk/basis-risk"
@@ -76,6 +100,8 @@
             ]
           }
         ]
+      }
+    ]
       }
     ],
     "global": {

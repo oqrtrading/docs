@@ -110,11 +110,11 @@ curl http://localhost:8080/api/fair-values
 |---|---|---|
 | `m_fair_id` | `string` | Alpha/fair value identifier |
 | `m_value` | `number \| null` | Point estimate of fair value |
-| `m_shadow_bid` | `number \| null` | Shadow bid (model's implied bid) |
-| `m_shadow_ask` | `number \| null` | Shadow ask (model's implied ask) |
+| `m_shadow_bid` | `number \| null` | Shadow bid override; when shadow is enabled, used as the fair for the bid side instead of `m_value` |
+| `m_shadow_ask` | `number \| null` | Shadow ask override; when shadow is enabled, used as the fair for the ask side instead of `m_value` |
 | `m_last_updated` | `integer \| null` | Last update timestamp (nanoseconds since epoch) |
 | `m_mode` | `integer` | Alpha mode flag |
-| `m_user_data` | `integer` | Opaque user-defined metadata |
+| `m_user_data` | `integer` | When non-zero, shadow is enabled: quoters use `m_shadow_bid` / `m_shadow_ask` as overrides instead of centering around `m_value` |
 
 ---
 
@@ -137,9 +137,9 @@ curl -X POST "http://localhost:8080/api/fair?m_fair_id=MY-ALPHA&m_fair_value=0.5
 | `m_fair_id` | `string` | Yes | Alpha/fair value identifier |
 | `m_fair_value` | `number` | No | Fair value (defaults to `0.0`) |
 | `m_mode` | `integer` | No | Alpha mode (defaults to `ALPHA_MODE_ON`) |
-| `m_user_data` | `integer` | No | Opaque user metadata (defaults to `0`) |
-| `m_shadow_bid` | `number` | No | Shadow bid (defaults to `m_fair_value`) |
-| `m_shadow_ask` | `number` | No | Shadow ask (defaults to `m_fair_value`) |
+| `m_user_data` | `integer` | No | Set non-zero to enable shadow (use `m_shadow_bid` / `m_shadow_ask` as overrides); defaults to `0` |
+| `m_shadow_bid` | `number` | No | Shadow bid override when shadow is on (defaults to `m_fair_value`) |
+| `m_shadow_ask` | `number` | No | Shadow ask override when shadow is on (defaults to `m_fair_value`) |
 
 Returns `200 OK` with an empty JSON body.
 

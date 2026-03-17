@@ -11,6 +11,7 @@
 - Configuration lives in `docs.json`
 - Run `mint dev` to preview locally
 - Run `mint broken-links` to check links
+- **Versioning**: The nav is under `navigation.versions` with one entry (e.g. "Latest"). To add a new doc version (e.g. for a release), add another object to `versions` with `version`, optional `tag` ("Latest", "Recommended", etc.), and `tabs` mirroring the structure. The first version is the default; set `"default": true` on another to change it. Version-specific content can live in versioned paths (e.g. `v1/`, `v2/`) or separate branches in Mintlify.
 
 ## Terminology
 

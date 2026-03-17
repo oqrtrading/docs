@@ -1,0 +1,14 @@
+---
+title: "5. The consolidated orderbook"
+description: "One book from multiple legs, in one unit."
+---
+
+A **consolidated orderbook** is one book built from all legs (e.g. yes and no) with a consistent **orientation**.
+
+- We pick one side as the reference (e.g. yes). The other side (no) is **flipped**: a bid on no at 45¢ is shown as an ask at 55¢ in yes-terms, because buying no at 45¢ is the same as selling yes at 55¢.
+- We merge all levels into one set of bids and one set of asks in that reference unit. So you see **one** best bid and **one** best ask—the true best prices to buy or sell the logical contract.
+- That view is scoped to a **quoter group**: the set of tickers (and their orientation) that belong together. The same group is used when you place a **consolidated order** so the book and your orders are in the same unit.
+
+So: one book, one unit (e.g. yes-cents), one decision. No mental conversion between legs. Details: [Consolidated orderbooks and the smart order router](/trading/consolidated-orderbooks-and-sor).
+
+Next: [6. Your consolidated position](/trading-tutorial/consolidated-position) — one number for your net exposure.

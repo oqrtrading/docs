@@ -1,0 +1,38 @@
+---
+title: "Fair values"
+description: "What fair values are and how they're used in the platform."
+---
+
+## What is fair?
+
+**Fair** is the price you’re willing to buy or sell around—your own valuation of the contract. In the UI and in the API, “fair” is your level: you want to buy below it and sell above it. The system uses fair values to know where you think value is, so it can drive quoting, risk, and order placement.
+
+Fair is not the same as **edge**. Edge is the advantage you expect—*why* you trade. Fair is the *number* you assign as your valuation so the platform can act on it.
+
+## How fair values are used
+
+- **Quoters** use a fair value source (e.g. alpha bus, manual input, or combined) to center their quotes. See [Quoters](/api/quoters) for configuration.
+- **Order placement** can be tied to your fair: e.g. only lift offers below your fair, only hit bids above it.
+- **Risk and P&amp;L** often compare positions and fills to your fair to evaluate whether you’re trading around your view.
+
+## Shadow bid and shadow ask
+
+**Shadow bid** and **shadow ask** are optional overrides. When shadow is enabled for a fair, the quoter does *not* center both sides around the single fair. Instead it uses **shadow bid** as the level for the bid side and **shadow ask** for the ask side. So you can quote asymmetrically: e.g. fair at 55¢ but bid at 53¢ and ask at 57¢. If shadow is off, the single fair is used for both sides and shadow bid/ask are ignored.
+
+The main reason for this is **debugging and tuning**: you keep your fair (and risk/P&amp;L view) the same and adjust only where the quoter is willing to bid and ask—so you can tweak spread, skew, or liquidity without changing the central valuation. You set shadow bid and shadow ask when publishing a fair via the API (see [Market data — POST fair](/api/market-data)). The “shadow enabled” flag (e.g. in alpha/user data) controls whether the spreader uses these overrides.
+
+## Where fair values come from
+
+- **Alpha bus** – Model or external alpha that publishes fair value estimates. The trade server subscribes and exposes them via the API and WebSocket.
+- **Manual input** – You (or a script) publish a fair via `POST /api/fair`. Useful for overriding or supplementing alpha.
+- **Combined** – Some setups merge multiple sources (e.g. alpha + manual) into a single fair per ticker.
+
+## API and WebSocket
+
+| What | Where |
+|------|--------|
+| Get current fair values | [Market data — Get fair values](/api/market-data) |
+| Publish a fair value | [Market data — POST fair](/api/market-data) |
+| Stream fair updates | [WebSocket — fairs](/api/websocket) |
+
+Full request/response shapes and parameters are in [Market data](/api/market-data).

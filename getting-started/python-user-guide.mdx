@@ -1,0 +1,239 @@
+---
+title: "Python user guide"
+description: "End-to-end example: build a bot that subscribes to a ticker and places a sweep order when a trigger fires."
+---
+
+This guide is one **full end-to-end example**: from a clean environment to a running Python bot that subscribes to a ticker’s order book over Valence’s WebSocket and places a **sweep order** (IOC order that takes liquidity) when a trigger condition is met. Each section builds on the previous one; at the end you have a single script you can run.
+
+## What you’ll build
+
+1. **Configure** base URL and ticker.
+2. **Get an auth token** from the Trade Server.
+3. **Connect to the WebSocket** and receive MessagePack order book updates.
+4. **Filter** updates for your ticker and keep the latest best bid/ask.
+5. **Trigger**: when best ask ≤ 50¢, **place a sweep order** (IOC buy at 55¢ for 25 contracts).
+6. **Run** the full script and (optionally) verify with the Terminal or REST.
+
+---
+
+## Step 1: Environment and config
+
+Use Python 3.8+ and install:
+
+```bash
+pip install requests websocket-client msgpack
+```
+
+You need the Valence Trade Server running (e.g. `http://localhost:8080`) and a ticker that the server is already tracking (e.g. one that appears in the Terminal or in `GET /api/books`). We’ll use that ticker for the whole example.
+
+Create a file `valence_bot.py` and start with config at the top:
+
+```python
+import time
+import requests
+import msgpack
+import websocket
+
+BASE_URL = "http://localhost:8080"
+WS_URL  = "ws://localhost:8080"
+TICKER = "kalshi:KXNFLGAME-25NOV13-NE"   # Replace with a ticker your server tracks
+
+TRIGGER_BEST_ASK_MAX_CENTS = 50   # Fire when best ask <= 50¢
+SWEEP_PRICE_CENTS          = 55   # IOC buy up to 55¢
+SWEEP_QUANTITY             = 25
+COOLDOWN_SEC               = 5    # Min seconds between sweep orders
+```
+
+---
+
+## Step 2: Get an auth token
+
+The WebSocket requires a token in the URL. Add a function that calls `POST /api/auth/token` and returns the token (and optional TTL):
+
+```python
+def get_token():
+    r = requests.post(f"{BASE_URL}/api/auth/token")
+    r.raise_for_status()
+    data = r.json()
+    return data["m_token"], data.get("m_expires_in", 3600)
+```
+
+You’ll call this once at startup (and optionally again before expiry for long-running bots).
+
+---
+
+## Step 3: Connect to the WebSocket and parse order books
+
+Connect to `ws://host/api/ws?token=...`. The server sends **all** tracked books every 200ms (when data changes) as **MessagePack** binary frames. Add a loop that receives frames, decodes MessagePack, and for each `orderbooks` message finds the entry for your ticker and extracts best bid/ask in cents:
+
+```python
+def parse_book_for_ticker(entries, ticker):
+    for entry in entries:
+        if entry.get("m_symbol") != ticker:
+            continue
+        book = entry.get("m_book", {})
+        bids = book.get("m_bids", [])
+        asks = book.get("m_asks", [])
+        best_bid = int(bids[0]["m_level"] * 100) if bids else None
+        best_ask = int(asks[0]["m_level"] * 100) if asks else None
+        return best_bid, best_ask
+    return None, None
+```
+
+(Book prices are decimals like `0.55`; we convert to cents for comparisons.)
+
+---
+
+## Step 4: Place a sweep order when triggered
+
+When your trigger fires (e.g. `best_ask <= TRIGGER_BEST_ASK_MAX_CENTS`), send a single-symbol **IOC** order so the exchange fills what it can and cancels the rest. Add:
+
+```python
+def place_sweep_order(symbol, action, side, price_cents, quantity):
+    r = requests.post(
+        f"{BASE_URL}/api/orders",
+        json={
+            "m_symbol": symbol,
+            "m_action": action,
+            "m_side": side,
+            "m_price": price_cents,
+            "m_quantity": quantity,
+            "m_ioc": True,
+        },
+        headers={"Content-Type": "application/json"},
+    )
+    r.raise_for_status()
+    return r.json()
+```
+
+Trigger logic: only call this when `best_ask <= TRIGGER_BEST_ASK_MAX_CENTS` and at least `COOLDOWN_SEC` have passed since the last order, then update the last-trigger time.
+
+---
+
+## Step 5: Full end-to-end script
+
+Tie everything together in one main loop: get token → connect WebSocket → on each `orderbooks` message, parse your ticker’s book → if trigger and cooldown OK, place sweep order and log. Here’s the **complete script**:
+
+```python
+import time
+import requests
+import msgpack
+import websocket
+
+BASE_URL = "http://localhost:8080"
+WS_URL   = "ws://localhost:8080"
+TICKER  = "kalshi:KXNFLGAME-25NOV13-NE"
+
+TRIGGER_BEST_ASK_MAX_CENTS = 50
+SWEEP_PRICE_CENTS          = 55
+SWEEP_QUANTITY             = 25
+COOLDOWN_SEC               = 5
+
+def get_token():
+    r = requests.post(f"{BASE_URL}/api/auth/token")
+    r.raise_for_status()
+    data = r.json()
+    return data["m_token"], data.get("m_expires_in", 3600)
+
+def parse_book_for_ticker(entries, ticker):
+    for entry in entries:
+        if entry.get("m_symbol") != ticker:
+            continue
+        book = entry.get("m_book", {})
+        bids = book.get("m_bids", [])
+        asks = book.get("m_asks", [])
+        best_bid = int(bids[0]["m_level"] * 100) if bids else None
+        best_ask = int(asks[0]["m_level"] * 100) if asks else None
+        return best_bid, best_ask
+    return None, None
+
+def place_sweep_order(symbol, action, side, price_cents, quantity):
+    r = requests.post(
+        f"{BASE_URL}/api/orders",
+        json={
+            "m_symbol": symbol,
+            "m_action": action,
+            "m_side": side,
+            "m_price": price_cents,
+            "m_quantity": quantity,
+            "m_ioc": True,
+        },
+        headers={"Content-Type": "application/json"},
+    )
+    r.raise_for_status()
+    return r.json()
+
+def main():
+    token, ttl = get_token()
+    print(f"Token obtained (valid {ttl}s). Connecting to WebSocket for {TICKER}.")
+    url = f"{WS_URL}/api/ws?token={token}"
+    ws = websocket.WebSocket()
+    ws.connect(url)
+    last_trigger_time = 0
+
+    while True:
+        raw = ws.recv()
+        if isinstance(raw, str):
+            continue
+        data = msgpack.unpackb(raw, raw=False)
+        if data.get("type") != "orderbooks":
+            continue
+        best_bid, best_ask = parse_book_for_ticker(data.get("entries", []), TICKER)
+        if best_ask is None:
+            continue
+        now = time.time()
+        if best_ask <= TRIGGER_BEST_ASK_MAX_CENTS and (now - last_trigger_time) >= COOLDOWN_SEC:
+            print(f"Trigger: best_ask={best_ask}¢ <= {TRIGGER_BEST_ASK_MAX_CENTS}¢. Placing IOC buy @ {SWEEP_PRICE_CENTS}¢ x {SWEEP_QUANTITY}.")
+            try:
+                res = place_sweep_order(TICKER, "buy", "yes", SWEEP_PRICE_CENTS, SWEEP_QUANTITY)
+                print("Order placed:", res)
+                last_trigger_time = now
+            except Exception as e:
+                print("Order failed:", e)
+    ws.close()
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## Step 6: Run and verify
+
+1. **Start the Trade Server** and ensure it’s tracking the ticker you set (e.g. open the ticker in the Terminal or add it via a quoter).
+2. **Set `TICKER`** in the script to that symbol (e.g. `kalshi:YOUR-TICKER`).
+3. Run:
+
+   ```bash
+   python valence_bot.py
+   ```
+
+4. You should see: `Token obtained ... Connecting to WebSocket ...`. When the live best ask for that ticker is ≤ 50¢, the script will log and send an IOC buy at 55¢ for 25 contracts. Check the Terminal’s blotter or `GET /api/orders` / `GET /api/trades` (if available) to confirm orders and fills.
+
+5. **Long runs**: Tokens expire (e.g. 1 hour). For production, refresh the token and reconnect before expiry (e.g. reconnect when `m_expires_in` is near 0 or on 401).
+
+---
+
+## Optional: consolidated sweep (two legs)
+
+If your ticker belongs to a **quoter** with two legs (e.g. yes and no), you can use the [smart order router](/trading/consolidated-orderbooks-and-sor) to sweep the **combined** book: `POST /api/orders/consolidated` with `m_qkey` (quoter key) and `m_ask_split_ratio` in `(0, 1)` (e.g. `0.5`). See [Smart order router](/trading/smart-order-router) for the full request body.
+
+---
+
+## Summary
+
+| Step | What you did |
+|------|----------------|
+| 1 | Set `BASE_URL`, `WS_URL`, `TICKER`, trigger/sweep constants. |
+| 2 | `get_token()` → `POST /api/auth/token`. |
+| 3 | Connect to `ws://.../api/ws?token=...`, decode MessagePack, parse `orderbooks.entries` for `TICKER`. |
+| 4 | When `best_ask <= 50¢` and cooldown passed, `place_sweep_order()` with `m_ioc: true`. |
+| 5 | One script: auth → WebSocket loop → trigger → place order. |
+| 6 | Run and verify in Terminal or via REST. |
+
+## See also
+
+- [Authentication](/api/authentication) — token lifecycle
+- [WebSocket](/api/websocket) — message types and MessagePack
+- [Orders](/api/orders) — place/cancel, single and consolidated
+- [Consolidated orderbooks and the smart order router](/trading/consolidated-orderbooks-and-sor) — when to use consolidated orders

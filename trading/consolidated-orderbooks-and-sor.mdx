@@ -1,0 +1,79 @@
+---
+title: "Consolidated orderbooks and the smart order router"
+description: "How to think about consolidated books and how the SOR works under the hood."
+---
+
+This page explains **consolidated orderbooks** (one logical book built from multiple tickers) and the **smart order router (SOR)** that turns a single consolidated order into the right child orders. Both are important for trading multi-leg markets (e.g. yes/no, spreads) without managing each leg by hand.
+
+## How to think about consolidated orderbooks
+
+### One logical book from many legs
+
+In prediction markets you often have **multiple related contracts** that represent the same event in different forms: for example a **yes** and a **no** contract that sum to 100¢, or several spreads/totals for the same game. Each contract has its own **order book** on the venue (bids and asks per price level).
+
+A **consolidated orderbook** is a single, combined view of those books so you can think and trade in **one** unit of risk instead of juggling legs.
+
+- **Aggregation**: Bids and asks from all tickers in the group are merged into one set of price levels. Size at a given price is the sum of size across tickers at that level (after orientation is applied).
+- **Orientation (normal vs flipped)**: One leg is usually chosen as the “reference” (e.g. yes). The other leg (e.g. no) is **flipped**: a bid at 45¢ on no is shown as an ask at 55¢ in the consolidated view, because buying no at 45¢ is equivalent to selling yes at 55¢. So the consolidated book is expressed in one consistent side (e.g. “yes cents”).
+- **Best bid / best ask**: The consolidated best bid is the best price at which you can **buy** the logical unit (e.g. yes); the best ask is the best price at which you can **sell** it. That might come from one ticker or from a combination of legs.
+
+So when you look at “consolidated” in the Terminal or via the API, you’re seeing **one book** that already accounts for both (or all) legs and their orientation. You don’t have to mentally add yes and no books yourself.
+
+### Why use a consolidated view?
+
+- **Single decision**: You decide “buy 100 at 55¢” in logical terms. You don’t have to compute how many yes vs no to hit, or at what prices.
+- **Fair comparison**: You see the true best bid/ask and depth for the combined market, which can be better than either leg alone (e.g. liquidity on both sides).
+- **Risk and size**: Position and exposure are easier to reason about in one unit (e.g. “100 contracts yes-equivalent”) instead of per leg.
+
+Consolidated books are built per **quoter group**: the same group that the smart order router uses when you place a consolidated order. So the view and the execution are aligned.
+
+## How the smart order router works under the hood
+
+When you place a **consolidated order** (one price, one quantity, one side in logical terms), the **smart order router (SOR)** is responsible for turning that into the right **child orders**—one per ticker—with correct prices and quantities for the venue.
+
+### Entry point
+
+- You call `POST /api/orders/consolidated` with a **quoter key** (`m_qkey`), action (buy/sell), side (yes/no), limit price, and quantity.
+- The server looks up that quoter’s tickers and their orientation (normal vs flipped), then runs the SOR to produce one or more child orders and submits them.
+
+Single-symbol orders (`POST /api/orders` with `m_symbol`) do **not** go through the SOR; they are sent as-is to that symbol.
+
+### Allocation strategies
+
+1. **Single ticker**  
+   If the quoter has only one ticker, the logical order becomes one child order. No split.
+
+2. **Ratio-based split (e.g. two tickers)**  
+   You can send an **ask split ratio** (`m_ask_split_ratio`): a number between 0 and 1 that says how much of the quantity goes to one leg vs the other (e.g. 0.7 → 70% to one leg, 30% to the other).  
+   - **0 or 1**: 100% to one leg; no liquidity sweep, just a straight split.  
+   - **Omitted**: Default is 0.7.  
+   The SOR converts price and side per ticker using orientation (flipped ticker gets flipped price and side).
+
+3. **Liquidity sweep (ratio strictly between 0 and 1)**  
+   When the ratio is between 0 and 1 and there is **opposing liquidity** (asks when you’re buying, bids when you’re selling) at or through your limit:
+   - The SOR computes a **combined best bid/offer** across all tickers in the group.
+   - It **walks price levels** from that best level toward your limit, one cent at a time.
+   - At each level it allocates quantity to each ticker based on available size on the opposite side, until the full order quantity is filled or levels are exhausted.
+   - Any **remainder** (quantity not filled by the sweep) is split **equally** across tickers (with remainder distributed so the sum matches your request).
+   - Child orders are sent as limit orders at your limit price (and oriented price for flipped tickers) with the allocated quantities.
+
+If there’s no combined BBO, or your limit doesn’t cross the market (e.g. you’re bidding below best ask), the SOR **falls back to ratio-based split** (e.g. 70/30 at default) instead of a sweep.
+
+### Orientation in the SOR
+
+Flipped tickers get **price and side converted** so that venue orders are correct: e.g. “buy yes at 55¢” might become “sell no at 45¢” on the venue. The SOR outputs venue-ready limit orders; you always speak in logical (consolidated) terms.
+
+For full request/response fields, errors, and examples, see [Smart order router (manual consolidated orders)](/trading/smart-order-router).
+
+## Why this is important
+
+- **One order, multiple legs**: You send a single consolidated order (price, size, side). The SOR handles splitting across yes/no (or other legs) and applying orientation. You don’t place and manage two separate orders.
+- **Better execution when it matters**: When you use a ratio in (0, 1), the **liquidity sweep** can improve fill price by walking the book and taking liquidity across both legs at each level, instead of blindly splitting 70/30. You still get a single logical order from your perspective.
+- **Aligned with the consolidated book**: The same quoter group that defines the consolidated view is the one the SOR uses. So the BBO and depth you see in the consolidated orderbook are exactly what the SOR uses for sweep and allocation.
+- **Less operational overhead**: One order type, one cancel (e.g. cancel all orders for that quoter), and one view to monitor. That reduces errors and speeds up workflow when you trade multi-leg markets every day.
+
+## See also
+
+- [Smart order router (manual consolidated orders)](/trading/smart-order-router) — API reference for `POST /api/orders/consolidated`, ask split ratio, and behavior summary.
+- [Quoters](/api/quoters) — List quoters and their tickers; SOR and consolidated books are scoped by quoter.
+- [How orders work](/trading/how-orders-work) — Order lifecycle and venue behavior.

@@ -1,7 +1,9 @@
 ---
 title: "Smart order router (manual consolidated orders)"
-description: "How consolidated orders are split across a quoter's tickers."
+description: "API reference: how consolidated orders are split across a quoter's tickers."
 ---
+
+For the concepts—how to think about consolidated orderbooks and why the SOR matters—see [Consolidated orderbooks and the smart order router](/trading/consolidated-orderbooks-and-sor).
 
 The smart order router (SOR) applies when you place a **consolidated order** — a single logical order (price, quantity, side) that is split across multiple tickers belonging to one quoter. It does **not** apply to single-symbol orders (`POST /api/orders` with `m_symbol`), which are sent directly to that symbol.
 
@@ -156,5 +158,6 @@ The SOR outputs venue-ready limit orders per ticker with the correct price and s
 
 ## See also
 
+- [Consolidated orderbooks and the smart order router](/trading/consolidated-orderbooks-and-sor) — conceptual guide: how consolidated books work and why the SOR matters.
 - [Orders API](/api/orders) — full reference for place/cancel (including [cancel consolidated](/api/orders#cancel-consolidated-orders)).
 - [Quoters](/api/quoters) — list quoters and their tickers; SOR runs in the context of a quoter's ticker set.
